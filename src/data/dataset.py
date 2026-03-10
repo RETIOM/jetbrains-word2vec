@@ -11,11 +11,11 @@ class WikiTextDataset:
     min_freq: int = 1
     subsampling_threshold: float = 1e-5
 
-    corpus: np.array = field(init=False)  # flat list of words in the data
-    offsets: np.array = field(init=False)  # index of i-th line start
+    corpus: np.ndarray = field(init=False)  # flat list of words in the data
+    offsets: np.ndarray = field(init=False)  # index of i-th line start
     word2id: dict[str, int] = field(init=False)
     id2word: dict[int, str] = field(init=False)
-    sampling_table: np.array = field(init=False)
+    sampling_table: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self._create_vocab()
