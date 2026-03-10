@@ -217,5 +217,5 @@ __marimo__/
 
 
 # data
-/data/wiki-text103/*
-!/data/wiki-text103/README.md
+/data/*
+!/data/README.md
