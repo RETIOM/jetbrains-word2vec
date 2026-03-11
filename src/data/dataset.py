@@ -15,17 +15,20 @@ class IterDataset(Dataset):
         pass
 
 
+# TODO move some logic from the dataset to a separate Tokenizer
+
+
 @dataclass(slots=True)
 class WikiTextDataset(IterDataset):
     data_path: str
     window_size: int = 2
-    min_freq: int = 1
+    min_freq: int = 1  # TODO MOVE
     subsampling_threshold: float = 1e-5
 
     corpus: np.ndarray = field(init=False)  # flat list of words in the data
     offsets: np.ndarray = field(init=False)  # index of i-th line start
-    word2id: dict[str, int] = field(init=False)
-    id2word: dict[int, str] = field(init=False)
+    word2id: dict[str, int] = field(init=False)  # TODO MOVE
+    id2word: dict[int, str] = field(init=False)  # TODO MOVE
     sampling_table: np.ndarray = field(init=False)
 
     def __post_init__(self):
