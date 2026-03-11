@@ -2,10 +2,17 @@ from dataclasses import dataclass, field
 import re
 import numpy as np
 from collections import Counter
+from abc import ABC, abstractmethod
+
+
+class IterDataset(ABC):
+    @abstractmethod
+    def __iter__(self):
+        pass
 
 
 @dataclass(slots=True)
-class WikiTextDataset:
+class WikiTextDataset(IterDataset):
     data_path: str
     window_size: int = 2
     min_freq: int = 1
