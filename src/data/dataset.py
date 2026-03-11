@@ -5,7 +5,11 @@ from collections import Counter
 from abc import ABC, abstractmethod
 
 
-class IterDataset(ABC):
+class Dataset(ABC):
+    pass
+
+
+class IterDataset(Dataset):
     @abstractmethod
     def __iter__(self):
         pass

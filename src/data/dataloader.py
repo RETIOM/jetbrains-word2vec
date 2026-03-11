@@ -1,28 +1,29 @@
 from dataclasses import dataclass
-from dataset import IterDataset
+from dataset import IterDataset, Dataset
+from utils.collate import collate_fn
 from typing import Callable
 import numpy as np
 
+from abc import ABC, abstractmethod
 
-def collate_fn(
-    batch: list[tuple[np.ndarray, int]],
-) -> tuple[np.ndarray, np.ndarray]:
-    context, target = zip(*batch)
-    target_batch = np.stack(target)
 
-    context_batch = np.full((len(context), max(context, key=lambda x: len(x))), -1)
+class Dataloader(ABC):
+    dataset: Dataset
+    batch_size: int
+    collate_fn: Callable
 
-    for idx, arr in enumerate(context):
-        context_batch[idx, len(arr)] = arr
-
-    return context_batch, target_batch
+    @abstractmethod
+    def __iter__(
+        self,
+    ):
+        pass
 
 
 @dataclass(slots=True, frozen=True)
-class IterDataloader:
+class IterDataloader(Dataloader):
     dataset: IterDataset
     batch_size: int
-    collate_fn: Callable | None = collate_fn
+    collate_fn: Callable = collate_fn
 
     def __iter__(self):
         batch = []
