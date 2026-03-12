@@ -1,8 +1,32 @@
 import numpy as np
-from src.utils.math_utils import softmax
+from abc import abstractmethod, ABC
 
 
-class CBOW:
+class Model(ABC):
+    @abstractmethod
+    def forward(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def backward(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def params(self):
+        pass
+
+    @abstractmethod
+    def grads(self):
+        pass
+
+
+class EmbeddingModel(Model):
+    @abstractmethod
+    def embed(self, *args, **kwargs):
+        pass
+
+
+class CBOW(EmbeddingModel):
     """
     The model consits of 3 layers:
         input: 2*window_size
@@ -19,9 +43,8 @@ class CBOW:
         self.vocab_size = vocab_size
         self.n_dim = n_dim
 
-        scale = 1.0 / np.sqrt(n_dim)  # ≈ 0.058 for n_dim=300
+        scale = 1.0 / np.sqrt(n_dim)
         self.embeddings = np.random.randn(vocab_size, n_dim) * scale
-        self.linear = np.random.randn(n_dim, vocab_size) * scale
 
     def forward(self, batch: np.ndarray):
         """Batch is an array with -1 for padding"""
@@ -33,22 +56,17 @@ class CBOW:
 
         h = np.sum(lookup, axis=1) / np.sum(mask, axis=1, keepdims=True)
 
-        z = h @ self.linear
-
         self.cache = {"batch": batch, "mask": mask, "H": h}
 
-        return z
+        return h
 
-    def backward(self, delta_Z):
+    def backward(self, delta_H):
         """
         Z - output of last layer (batch, vocab)
         H - output of hidden layer (batch, embed_dim)
         W - linear weight matrix (embed_dim, vocab)
         E - embeddings weight matrix (vocab, embed_dim)
         """
-        self.delta_W = self.cache["H"].T @ delta_Z
-        delta_H = delta_Z @ self.linear.T
-
         num_words = self.cache["mask"].sum(axis=1, keepdims=True)[:, :, None]
 
         delta_per_word = delta_H[:, None, :] / num_words
@@ -63,13 +81,10 @@ class CBOW:
         )
 
     def params(self):
-        return [self.embeddings, self.linear]
+        return [self.embeddings]
 
     def grads(self):
-        return [self.delta_E, self.delta_W]
-
-    def predict(self, data):
-        return softmax(self.forward(data))
+        return [self.delta_E]
 
     def embed(self, word_id):
         return self.embeddings[word_id]

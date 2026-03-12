@@ -21,14 +21,16 @@ class WikiTextDataset(IterDataset):
     use_dynamic_window: bool = False
     min_count: int = 1
     subsampling_threshold: float = 1e-5
+    tokenizer: WikiTextTokenizer = None
 
     corpus: np.ndarray = field(init=False)  # flat list of words in the data
     offsets: np.ndarray = field(init=False)  # index of i-th line start
-    tokenizer: WikiTextTokenizer = field(init=False)
+    word_counts: np.ndarray = field(init=False)
     sampling_table: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        self.tokenizer = WikiTextTokenizer.from_file(self.data_path, self.min_count)
+        if not self.tokenizer:
+            self.tokenizer = WikiTextTokenizer.from_file(self.data_path, self.min_count)
         self._load_and_tokenize()
         self._build_sampling_table()
 
@@ -69,13 +71,15 @@ class WikiTextDataset(IterDataset):
                     yield context, target
 
     def _build_sampling_table(self):
-        counts_arr = np.bincount(
+        self.word_counts = np.bincount(
             self.corpus, minlength=self.tokenizer.vocab_size
         ).astype(np.float32)
 
-        total_words = sum(counts_arr)
+        total_words = sum(self.word_counts)
 
-        normalized_freq_arr = counts_arr / total_words + 1e-9  # epsilon to avoid div0
+        normalized_freq_arr = (
+            self.word_counts / total_words + 1e-9
+        )  # epsilon to avoid div0
 
         t = self.subsampling_threshold
         keep_probs = np.sqrt(t / normalized_freq_arr) + (t / normalized_freq_arr)
