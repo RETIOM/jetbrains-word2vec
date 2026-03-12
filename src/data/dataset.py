@@ -18,6 +18,7 @@ class IterDataset(Dataset):
 class WikiTextDataset(IterDataset):
     data_path: str
     window_size: int = 2
+    use_dynamic_window: bool = False
     min_count: int = 1
     subsampling_threshold: float = 1e-5
 
@@ -51,11 +52,13 @@ class WikiTextDataset(IterDataset):
             subsampled_line = line_arr[keep_mask]
 
             for idx, target in enumerate(subsampled_line):
-                # Dynamic Window Size (as seen in paper)
-                dynamic_w = np.random.randint(1, self.window_size + 1)
+                if self.use_dynamic_window:
+                    window_size = np.random.randint(1, self.window_size + 1)
+                else:
+                    window_size = self.window_size
 
-                start_wdx = max(0, idx - dynamic_w)
-                end_wdx = min(len(subsampled_line), idx + dynamic_w + 1)
+                start_wdx = max(0, idx - window_size)
+                end_wdx = min(len(subsampled_line), idx + window_size + 1)
 
                 left = subsampled_line[start_wdx:idx]
                 right = subsampled_line[idx + 1 : end_wdx]

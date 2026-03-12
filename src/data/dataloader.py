@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from dataset import IterDataset, Dataset
-from utils.collate import collate_fn
+from src.data.dataset import IterDataset, Dataset
 from typing import Callable
-import numpy as np
+from src.utils.collate import default_collate_fn
 
 from abc import ABC, abstractmethod
 
@@ -23,14 +22,16 @@ class Dataloader(ABC):
 class IterDataloader(Dataloader):
     dataset: IterDataset
     batch_size: int
-    collate_fn: Callable = collate_fn
+    collate_fn: Callable = default_collate_fn
 
     def __iter__(self):
         batch = []
         for sample in self.dataset:
             batch.append(sample)
             if len(batch) == self.batch_size:
-                yield self.collate_fn(batch)
+                yield self.collate_fn(
+                    batch,
+                )
                 batch = []
         if batch:
             yield self.collate_fn(batch)

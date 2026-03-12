@@ -33,7 +33,7 @@ class WikiTextTokenizer:
         if re.match(r"^=.*=$", line) is not None:
             return ""
 
-        line.replace("<unk>", "")
+        line = line.replace("<unk>", "")
         return re.sub(r"[^a-z0-9]+", " ", line)
 
     def encode_line(self, line) -> list[int]:
@@ -42,13 +42,14 @@ class WikiTextTokenizer:
         if not line:
             return []
 
-        return [i for w in line.split() if (i := self.word2idx.get(w)) if not None]
+        return [i for w in line.split() if (i := self.word2idx.get(w)) is not None]
 
     @property
     def vocab_size(self):
         return len(self.word2idx)
 
     def encode(self, word):
+        word = WikiTextTokenizer._clean_line(word)
         return self.word2idx[word]
 
     def decode(self, idx):
