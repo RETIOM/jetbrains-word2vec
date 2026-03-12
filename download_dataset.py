@@ -5,7 +5,7 @@ import zipfile
 dataset_url = (
     "https://www.kaggle.com/api/v1/datasets/download/vadimkurochkin/wikitext-103"
 )
-dataset_dir = "./data/wikitext-103"
+dataset_dir = "./data"
 zip_path = os.path.join(dataset_dir, "wikitext-103.zip")
 
 os.makedirs(dataset_dir, exist_ok=True)

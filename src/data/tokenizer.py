@@ -9,7 +9,7 @@ class WikiTextTokenizer:
     idx2word: dict[int, str]
 
     @staticmethod
-    def build_vocab(data_path: str, min_count: int) -> WikiTextTokenizer:
+    def from_file(data_path: str, min_count: int) -> WikiTextTokenizer:
         counts: Counter = Counter()
 
         with open(data_path, "r") as f:
@@ -42,7 +42,11 @@ class WikiTextTokenizer:
         if not line:
             return []
 
-        return [self.word2idx[w] for w in line.split() if w in self.word2idx]
+        return [i for w in line.split() if (i := self.word2idx.get(w)) if not None]
+
+    @property
+    def vocab_size(self):
+        return len(self.word2idx)
 
     def encode(self, word):
         return self.word2idx[word]

@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
-import re
 import numpy as np
-from collections import Counter
 from abc import ABC, abstractmethod
+from src.data.tokenizer import WikiTextTokenizer
 
 
 class Dataset(ABC):
@@ -15,25 +14,22 @@ class IterDataset(Dataset):
         pass
 
 
-# TODO move some logic from the dataset to a separate Tokenizer
-
-
 @dataclass(slots=True)
 class WikiTextDataset(IterDataset):
     data_path: str
     window_size: int = 2
-    min_freq: int = 1  # TODO MOVE
+    min_count: int = 1
     subsampling_threshold: float = 1e-5
 
     corpus: np.ndarray = field(init=False)  # flat list of words in the data
     offsets: np.ndarray = field(init=False)  # index of i-th line start
-    word2id: dict[str, int] = field(init=False)  # TODO MOVE
-    id2word: dict[int, str] = field(init=False)  # TODO MOVE
+    tokenizer: WikiTextTokenizer = field(init=False)
     sampling_table: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        self._create_vocab()
+        self.tokenizer = WikiTextTokenizer.from_file(self.data_path, self.min_count)
         self._load_and_tokenize()
+        self._build_sampling_table()
 
     def __iter__(self):
         num_lines = len(self.offsets) - 1
@@ -69,65 +65,30 @@ class WikiTextDataset(IterDataset):
                 if len(context) > 0:
                     yield context, target
 
-    def __clean_line(self, line: str) -> str:
-        if not (line := line.strip().lower()):
-            return ""
-        if re.match(r"^=.*=$", line) is not None:
-            return ""
+    def _build_sampling_table(self):
+        counts_arr = np.bincount(
+            self.corpus, minlength=self.tokenizer.vocab_size
+        ).astype(np.float32)
 
-        line.replace("<unk>", "")
-        return re.sub(r"[^a-z0-9]+", " ", line)
+        total_words = sum(counts_arr)
 
-    def __build_sampling_table(self, word_counts) -> np.ndarray:
-        vocab_size = len(self.word2id)
+        normalized_freq_arr = counts_arr / total_words + 1e-9  # epsilon to avoid div0
 
-        counts_arr = np.zeros(vocab_size, dtype=np.float32)
-
-        for word, count in word_counts.items():
-            if word in self.word2id:
-                counts_arr[self.word2id[word]] = count
-
-        total_words = np.sum(counts_arr)
-
-        normalized_freq_arr = (
-            counts_arr / total_words + 1e-9
-        )  # epsilon added to prevent div by 0 err
-
-        keep_probs = np.sqrt(self.subsampling_threshold / normalized_freq_arr) + (
-            self.subsampling_threshold / normalized_freq_arr
-        )
+        t = self.subsampling_threshold
+        keep_probs = np.sqrt(t / normalized_freq_arr) + (t / normalized_freq_arr)
         keep_probs = np.clip(keep_probs, a_min=None, a_max=1.0)
-
-        return keep_probs
-
-    def _create_vocab(self):
-        counts = Counter()
-
-        with open(self.data_path, "r") as f:
-            for line in f.readlines():
-                line = self.__clean_line(line)
-                if not line:
-                    continue
-                counts.update(line.split())
-
-        vocab = {w: c for w, c in counts.items() if c >= self.min_freq}
-
-        self.word2id = {w: i for i, w in enumerate(vocab.keys())}
-        self.id2word = {i: w for w, i in self.word2id.items()}
-        self.sampling_table = self.__build_sampling_table(counts)
+        self.sampling_table = keep_probs
 
     def _load_and_tokenize(self):
         all_words = []
         offsets = [0]
         with open(self.data_path, "r") as f:
             for line in f.readlines():
-                line = self.__clean_line(line)
-                if not line:
+                ids = self.tokenizer.encode_line(line)
+                if not ids:
                     continue
 
-                all_words.extend(
-                    [self.word2id[w] for w in line.split() if w in self.word2id]
-                )
+                all_words.extend(ids)
                 offsets.append(len(all_words))
 
         self.corpus = np.array(all_words)
