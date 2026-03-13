@@ -21,7 +21,7 @@ class WikiTextDataset(IterDataset):
     use_dynamic_window: bool = False
     min_count: int = 1
     subsampling_threshold: float = 1e-5
-    tokenizer: WikiTextTokenizer = None
+    tokenizer: WikiTextTokenizer | None = None
 
     corpus: np.ndarray = field(init=False)  # flat list of words in the data
     offsets: np.ndarray = field(init=False)  # index of i-th line start

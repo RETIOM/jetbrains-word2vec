@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import numpy as np
+from typing import Any
 
 
 class Optimizer(ABC):
     @abstractmethod
-    def step(self, params: list[any], grads: list[any]) -> None:
+    def step(self, params: list[Any], grads: list[Any]) -> None:
         pass
 
 

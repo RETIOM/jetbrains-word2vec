@@ -84,6 +84,7 @@ class NegativeSamplingHead(Model):
             self.W_out = np.random.uniform(
                 -0.5 / n_dim, 0.5 / n_dim, (self.vocab_size, n_dim)
             )
+            self.delta_W_out = np.zeros_like(self.W_out)
 
     def forward(self, h, targets=None):
         if targets is None:
@@ -119,8 +120,7 @@ class NegativeSamplingHead(Model):
 
         delta_H = g_pos[:, None] * v_pos + np.sum(g_neg[:, :, None] * v_neg, axis=1)
 
-        self.delta_W_out = np.zeros_like(self.W_out)
-
+        self.delta_W_out.fill(0) # Reset gradients
         np.add.at(self.delta_W_out, targets, g_pos[:, None] * h)
 
         D = self.W_out.shape[1]

@@ -1,10 +1,24 @@
 from dataclasses import dataclass
 import re
 from collections import Counter
+from abc import ABC, abstractmethod
+
+
+class Tokenizer(ABC):
+    word2idx: dict[str, int]
+    idx2word: dict[int, str]
+
+    @abstractmethod
+    def encode(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def decode(self, *args, **kwargs):
+        pass
 
 
 @dataclass(slots=True)
-class WikiTextTokenizer:
+class WikiTextTokenizer(Tokenizer):
     word2idx: dict[str, int]
     idx2word: dict[int, str]
 
