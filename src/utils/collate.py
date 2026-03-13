@@ -28,7 +28,11 @@ def wikitext_collate_fn(
 
     context_batch = np.full((len(context), window_size * 2), pad_value)
 
-    for idx, arr in enumerate(context):
-        context_batch[idx, : len(arr)] = arr
+    for idx, (left, right) in enumerate(context):
+        if len(left) > 0:
+            context_batch[idx, window_size - len(left) : window_size] = left
+
+        if len(right) > 0:
+            context_batch[idx, window_size : window_size + len(right)] = right
 
     return context_batch, target_batch

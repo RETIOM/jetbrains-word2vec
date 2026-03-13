@@ -30,7 +30,9 @@ class WikiTextDataset(IterDataset):
 
     def __post_init__(self):
         if not self.tokenizer:
-            self.tokenizer = WikiTextTokenizer.from_file(self.data_path, self.min_count)
+            self.tokenizer = WikiTextTokenizer.from_vocab(
+                self.data_path, self.min_count
+            )
         self._load_and_tokenize()
         self._build_sampling_table()
 
@@ -68,7 +70,7 @@ class WikiTextDataset(IterDataset):
                 context = np.concatenate([left, right])
 
                 if len(context) > 0:
-                    yield context, target
+                    yield (left, right), target
 
     def _build_sampling_table(self):
         self.word_counts = np.bincount(
@@ -91,7 +93,7 @@ class WikiTextDataset(IterDataset):
         offsets = [0]
         with open(self.data_path, "r") as f:
             for line in f.readlines():
-                ids = self.tokenizer.encode_line(line)
+                ids = self.tokenizer.encode(line)
                 if not ids:
                     continue
 
