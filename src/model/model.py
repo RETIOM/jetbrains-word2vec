@@ -120,22 +120,21 @@ class NegativeSamplingHead(Model):
 
         delta_H = g_pos[:, None] * v_pos + np.sum(g_neg[:, :, None] * v_neg, axis=1)
 
-        self.delta_W_out.fill(0) # Reset gradients
-        np.add.at(self.delta_W_out, targets, g_pos[:, None] * h)
-
         D = self.W_out.shape[1]
-        np.add.at(
-            self.delta_W_out,
-            neg_ids.ravel(),
-            (g_neg[:, :, None] * h[:, None, :]).reshape(-1, D),
-        )
+        indices = np.concatenate([targets, neg_ids.ravel()])
+        values = np.concatenate([
+            g_pos[:, None] * h,
+            (g_neg[:, :, None] * h[:, None, :]).reshape(-1, D)
+        ])
+        
+        self.delta_W_sparse = (indices, values)
         return delta_H
 
     def params(self):
         return [self.W_out] if self.W_out is not None else []
 
     def grads(self):
-        return [self.delta_W_out] if hasattr(self, "delta_W_out") else []
+        return [self.delta_W_sparse] if hasattr(self, "delta_W_sparse") else []
 
 
 @dataclass(slots=True)
@@ -189,18 +188,16 @@ class CBOWEncoder(Encoder):
 
         delta_per_word = delta_per_word * self.cache["mask"][:, :, None]
 
-        self.delta_E = np.zeros_like(self.embeddings)
-        np.add.at(
-            self.delta_E,
-            self.cache["batch"][self.cache["mask"]],
-            delta_per_word[self.cache["mask"]],
-        )
+        indices = self.cache["batch"][self.cache["mask"]]
+        values = delta_per_word[self.cache["mask"]]
+        
+        self.delta_E_sparse = (indices, values)
 
     def params(self):
         return [self.embeddings]
 
     def grads(self):
-        return [self.delta_E]
+        return [self.delta_E_sparse] if hasattr(self, "delta_E_sparse") else []
 
     def embed(self, word_id):
         return self.embeddings[word_id]

@@ -14,7 +14,7 @@ def default_collate_fn(
     batch_targets = np.array(targets, dtype=np.int64)
 
     for i, seq in enumerate(sequences):
-        l = len(seq)
+        l = len(seq)  # noqa
         batch_sequences[i, :l] = seq
 
     return batch_sequences, batch_targets

@@ -16,4 +16,11 @@ class SGD(Optimizer):
 
     def step(self, params, grads) -> None:
         for param, grad in zip(params, grads):
-            np.subtract(param, self.lr * grad, out=param)
+            if isinstance(grad, tuple):
+                # Sparse gradient update
+                indices, values = grad
+                np.add.at(param, indices, -self.lr * values)
+            else:
+                # Dense gradient update (in-place)
+                grad *= self.lr
+                param -= grad
