@@ -1,5 +1,3 @@
-# argparse, build trainer and run it
-# args: --train-path,  --save-dir --val_path(optional) --patience(optional) --plot(optional) --save-metrics(optional)
 import argparse
 import random
 from functools import partial

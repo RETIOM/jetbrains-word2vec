@@ -2,10 +2,12 @@ import argparse
 import numpy as np
 from src.model.cbow import CBOWInference
 
+
 def cosine_similarity(v, U):
     num = np.dot(U, v)
     den = np.linalg.norm(U, axis=1) * np.linalg.norm(v)
     return num / (den + 1e-9)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,7 +22,7 @@ def main():
     model = CBOWInference.from_file(
         model_path=args.model_path,
         tokenizer_path=args.tokenizer_path,
-        adapter_path=args.adapter_path
+        adapter_path=args.adapter_path,
     )
 
     try:
@@ -33,17 +35,18 @@ def main():
     target_vec = sum(pos_vecs) - sum(neg_vecs)
 
     sims = cosine_similarity(target_vec, model.embeddings)
-    top_indices = np.argsort(sims)[-args.top_k:][::-1]
+    top_indices = np.argsort(sims)[-args.top_k :][::-1]
 
-    print(f"\n[Analogies]")
+    print("\n[Analogies]")
     print(f"   Original: {' + '.join(args.positive)} - {' - '.join(args.negative)}")
-    print(f"--------------------------------------------------")
+    print("--------------------------------------------------")
     print(f"   {'Word':<20} |   {'Cosine Similarity':<15}")
-    print(f"--------------------------------------------------")
+    print("--------------------------------------------------")
     for idx in top_indices:
         word = model.tokenizer.decode(idx)
         print(f"   {word:<20} |   {sims[idx]:.4f}")
-    print(f"--------------------------------------------------\n")
+    print("--------------------------------------------------\n")
+
 
 if __name__ == "__main__":
     main()

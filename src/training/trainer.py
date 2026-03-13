@@ -60,6 +60,19 @@ class Trainer:
             if self.config.store_metrics:
                 self._export_metrics(metrics, self.config.save_dir)
 
+        print("\n[Training Summary]")
+        print(f"   Epochs Completed: {len(metrics['train_loss'])}")
+        print(
+            f"   Final Train Loss: {metrics['train_loss'][-1]:.4f}"
+            if metrics["train_loss"]
+            else "   Final Train Loss: N/A"
+        )
+        if self.config.val_path is not None and metrics["val_loss"]:
+            print(
+                f"   Best Val Loss:    {self.best_loss:.4f} (Finished at {metrics['val_loss'][-1]:.4f})"
+            )
+        print()
+
         return metrics
 
     def test(self, test_dataloader: Dataloader) -> float:
@@ -89,7 +102,6 @@ class Trainer:
             logits = self.model.forward(batch, targets)
             loss = self.loss.forward(logits, targets)
 
-            # Smooth the loss for display to avoid jumping numbers
             ema_loss = loss if ema_loss is None else 0.9 * ema_loss + 0.1 * loss
             p_bar.set_postfix(loss=f"{ema_loss:.4f}", refresh=False)
 

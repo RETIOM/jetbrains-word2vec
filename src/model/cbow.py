@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from dataclasses import dataclass, field
 from src.model.models import Embedder, Head, TrainableEmbedder
-from src.model.example_inference import InferenceEmbedder
+from src.model.inference import InferenceEmbedder
 from src.data.tokenizer import Tokenizer
 from src.utils.math_utils import softmax
 import numpy as np
