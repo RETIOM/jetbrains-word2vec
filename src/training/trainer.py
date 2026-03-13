@@ -2,13 +2,14 @@ import os
 from dataclasses import dataclass, field
 from collections import defaultdict
 from pathlib import Path
+from argparse import Namespace
 
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import csv
 
-from src.model.model import TrainableModel
+from src.model.models import TrainableModel
 from src.model.loss import Loss
 from src.model.optimizer import Optimizer
 from src.data.dataloader import Dataloader
@@ -21,7 +22,7 @@ class Trainer:
     loss: Loss
     optimizer: Optimizer
     tokenizer: Tokenizer
-    config: dict
+    config: Namespace
 
     patience: int = field(init=False)
     best_loss: float = field(init=False, default=float("inf"))
@@ -29,22 +30,35 @@ class Trainer:
     best_weights: list[np.ndarray] = field(init=False, default_factory=list)
 
     def __post_init__(self):
-        self.patience = self.config.get("patience", 0)
+        self.patience = self.config.patience
 
     def fit(self, train_dataloader, val_dataloader) -> dict:
         metrics = defaultdict(list)
         try:
-            for epoch in tqdm(range(self.config.get("num_epochs", 10)), desc="EPOCH"):
-                metrics["train_loss"].append(self._train_epoch(train_dataloader))
-                if self.config.get("val"):
-                    metrics["val_loss"].append(self._validate_epoch(val_dataloader))
+            epoch_bar = tqdm(
+                range(self.config.epochs),
+                desc="Training Pipeline",
+                bar_format="{l_bar}{bar:40}{r_bar}",
+            )
+            for epoch in epoch_bar:
+                train_loss = self._train_epoch(train_dataloader)
+                metrics["train_loss"].append(train_loss)
+
+                if self.config.val_path is not None:
+                    val_loss = self._validate_epoch(val_dataloader)
+                    metrics["val_loss"].append(val_loss)
+                    epoch_bar.set_postfix(
+                        train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}"
+                    )
                     if self._check_early_stopping(metrics["val_loss"][-1]):
                         break
+                else:
+                    epoch_bar.set_postfix(train_loss=f"{train_loss:.4f}")
         finally:
-            self._save_model(self.config.get("save_dir", "."))
+            self._save_model(self.config.save_dir)
 
-            if self.config.get("save_metrics", None):
-                self._export_metrics(metrics, self.config.get("save_dir", "."))
+            if self.config.store_metrics:
+                self._export_metrics(metrics, self.config.save_dir)
 
         return metrics
 
@@ -62,14 +76,27 @@ class Trainer:
     def _train_epoch(self, dataloader: Dataloader) -> float:
         epoch_loss = 0.0
         num_batches = 0
-        p_bar = tqdm(dataloader, leave=False)
+        ema_loss = None
+
+        p_bar = tqdm(
+            dataloader,
+            leave=False,
+            bar_format="{l_bar}{bar:30}{r_bar}",
+            desc="  ↳ Training  ",
+        )
+
         for batch, targets in p_bar:
             logits = self.model.forward(batch, targets)
             loss = self.loss.forward(logits, targets)
-            p_bar.set_description(f"LOSS: {loss}")
+
+            # Smooth the loss for display to avoid jumping numbers
+            ema_loss = loss if ema_loss is None else 0.9 * ema_loss + 0.1 * loss
+            p_bar.set_postfix(loss=f"{ema_loss:.4f}", refresh=False)
+
             delta_output = self.loss.backward()
             self.model.backward(delta_output)
             self.optimizer.step(self.model.params(), self.model.grads())
+
             num_batches += 1
             epoch_loss += loss
 
@@ -78,13 +105,23 @@ class Trainer:
     def _validate_epoch(self, val_dataloader: Dataloader) -> float:
         total_loss = 0.0
         num_batches = 0
-        p_bar = tqdm(val_dataloader, desc=f"VALIDATION, LOSS: {0}")
+
+        p_bar = tqdm(
+            val_dataloader,
+            leave=False,
+            bar_format="{l_bar}{bar:30}{r_bar}",
+            desc="  ↳ Validation",
+        )
+
         for batch, targets in p_bar:
             logits = self.model.forward(batch, targets)
             loss = self.loss.forward(logits, targets)
-            p_bar.set_description(f"VALIDATION, LOSS: {loss}")
+
             total_loss += loss
             num_batches += 1
+
+            current_avg = total_loss / num_batches
+            p_bar.set_postfix(avg_loss=f"{current_avg:.4f}", refresh=False)
 
         return total_loss / max(1, num_batches)
 
@@ -107,27 +144,15 @@ class Trainer:
         return False
 
     def _save_model(self, save_dir: str) -> None:
-
-        os.makedirs(os.path.dirname(save_dir), exist_ok=True)
-
-        if getattr(self, "best_weights", None) is not None:
-            weights_to_save = self.best_weights
+        params = {}
+        if self.best_weights:
+            params["model_params"] = self.best_weights
         else:
-            weights_to_save = self.model.params()
+            params["model_params"] = self.model.params()
 
-        embeddings = weights_to_save[0]
-        w_out = weights_to_save[1] if len(weights_to_save) > 1 else np.array([])
+        params["tokenizer"] = self.tokenizer
 
-        word2idx = self.tokenizer.word2idx
-        idx2word = self.tokenizer.idx2word
-
-        np.savez(
-            Path(save_dir) / "best_model.npz",
-            embeddings=embeddings,
-            w_out=w_out,
-            word2idx=np.array(word2idx, dtype=object),
-            idx2word=np.array(idx2word, dtype=object),
-        )
+        self.model.save(params, save_dir)
 
     def _export_metrics(self, metrics: dict, save_dir: str) -> None:
         os.makedirs(save_dir, exist_ok=True)
@@ -152,7 +177,7 @@ class Trainer:
                         break
                     row[key] = values[i]
                 writer.writerow(row)
-        if self.config.get("plot", False):
+        if self.config.plot:
             plt.figure(figsize=(10, 6))
 
             plt.plot(

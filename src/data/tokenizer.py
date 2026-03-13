@@ -1,29 +1,52 @@
 from dataclasses import dataclass
 import re
 from collections import Counter
-from abc import ABC, abstractmethod
+import numpy as np
+import os
+from pathlib import Path
 
 
-class Tokenizer(ABC):
+@dataclass(slots=True)
+class Tokenizer:
     word2idx: dict[str, int]
     idx2word: dict[int, str]
 
-    @abstractmethod
-    def encode(self, *args, **kwargs):
+    def encode(self, line):
+        return [
+            i
+            for w in line.split()
+            if (i := self.word2idx.get(w.strip().lower())) is not None
+        ]
+
+    def decode(self, idx):
+        return self.idx2word[idx]
+
+    def save(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        save_dir = Path(save_dir)
+
+        np.savez(
+            save_dir / "tokenizer.npz", word2idx=self.word2idx, idx2word=self.idx2word
+        )
+
+    @classmethod
+    def from_vocab(cls, *args, **kwargs):
         pass
 
-    @abstractmethod
-    def decode(self, *args, **kwargs):
-        pass
+    @classmethod
+    def from_file(cls, file_path: str):
+        data = np.load(file_path, allow_pickle=True)
+
+        word2idx = data["word2idx"].item()
+        idx2word = data["idx2word"].item()
+
+        return cls(word2idx=word2idx, idx2word=idx2word)
 
 
 @dataclass(slots=True)
 class WikiTextTokenizer(Tokenizer):
-    word2idx: dict[str, int]
-    idx2word: dict[int, str]
-
-    @staticmethod
-    def from_file(data_path: str, min_count: int) -> WikiTextTokenizer:
+    @classmethod
+    def from_vocab(cls, data_path: str, min_count: int) -> WikiTextTokenizer:
         counts: Counter = Counter()
 
         with open(data_path, "r") as f:
@@ -38,7 +61,7 @@ class WikiTextTokenizer(Tokenizer):
         word2idx = {w: i for i, w in enumerate(vocab.keys())}
         idx2word = {i: w for w, i in word2idx.items()}
 
-        return WikiTextTokenizer(word2idx=word2idx, idx2word=idx2word)
+        return cls(word2idx=word2idx, idx2word=idx2word)
 
     @staticmethod
     def _clean_line(line: str) -> str:
@@ -50,21 +73,10 @@ class WikiTextTokenizer(Tokenizer):
         line = line.replace("<unk>", "")
         return re.sub(r"[^a-z0-9]+", " ", line)
 
-    def encode_line(self, line) -> list[int]:
+    def encode(self, line) -> list[int]:
         line = WikiTextTokenizer._clean_line(line)
-
-        if not line:
-            return []
-
-        return [i for w in line.split() if (i := self.word2idx.get(w)) is not None]
+        return super().encode(line)
 
     @property
     def vocab_size(self):
         return len(self.word2idx)
-
-    def encode(self, word):
-        word = WikiTextTokenizer._clean_line(word)
-        return self.word2idx[word]
-
-    def decode(self, idx):
-        return self.idx2word[idx]
