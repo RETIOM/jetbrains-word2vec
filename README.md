@@ -126,9 +126,10 @@ _dataset load might take a while_(around 1min for me)
 python demo.py \
     --model-path ./outputs/model/small/embedder.npz \
     --tokenizer-path ./outputs/model/small/tokenizer.npz \
+    --include-inputs \
     --positive king woman \
     --negative man \
     --top-k 10
 ```
-_to inference with large be sure to pull it(instruction above) and change paths_
+_to inference with large be sure to pull it(instruction above), change paths and remove `--include-inputs`_
 
