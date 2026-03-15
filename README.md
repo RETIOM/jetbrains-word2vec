@@ -74,7 +74,7 @@ python3 download_dataset.py
 ```
 
 NOTE:
-By default only the _small_ model(trained using "Quick test") is bundled with git, while the _large_ model(trained on the full corpra) requires:
+By default only the _small_ model(trained using "Quick test") is bundled with git, while the _large_ model(trained on the full corpra) might require:
 ```bash
 git lfs install
 git lfs pull
@@ -131,5 +131,5 @@ python demo.py \
     --negative man \
     --top-k 10
 ```
-_to inference with large be sure to pull it(instruction above), change paths and remove `--include-inputs`_
+_to inference with large be sure to pull it if not present(instruction above), change paths and remove `--include-inputs`_
 
