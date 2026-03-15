@@ -130,4 +130,5 @@ python demo.py \
     --negative man \
     --top-k 10
 ```
+_to inference with large be sure to pull it(instruction above) and change paths_
 
