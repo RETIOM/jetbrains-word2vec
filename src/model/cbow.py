@@ -48,9 +48,7 @@ class CBOWEmbedder(Embedder):
 
     def backward(self, delta_H):
         """
-        Z - output of last layer (batch, vocab)
         H - output of hidden layer (batch, embed_dim)
-        W - linear weight matrix (embed_dim, vocab)
         E - embeddings weight matrix (vocab, embed_dim)
         """
         num_words = self.cache["mask"].sum(axis=1, keepdims=True)[:, :, None]

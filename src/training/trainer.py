@@ -25,6 +25,8 @@ class Trainer:
     config: Namespace
 
     patience: int = field(init=False)
+    total_steps: int = field(init=False)
+    do_step: bool = field(init=False, default=False)
     best_loss: float = field(init=False, default=float("inf"))
     ticker: int = field(init=False)
     best_weights: list[np.ndarray] = field(init=False, default_factory=list)
@@ -34,6 +36,12 @@ class Trainer:
 
     def fit(self, train_dataloader, val_dataloader) -> dict:
         metrics = defaultdict(list)
+        train_loss: float = 0.0
+        self.total_steps = (
+            len(train_dataloader.dataset)
+            if hasattr(train_dataloader.dataset, "__len__")
+            else -1
+        )
         try:
             epoch_bar = tqdm(
                 range(self.config.epochs),
@@ -41,7 +49,11 @@ class Trainer:
                 bar_format="{l_bar}{bar:40}{r_bar}",
             )
             for epoch in epoch_bar:
-                train_loss = self._train_epoch(train_dataloader)
+                self.do_step = self.config.lr_scheduling != "off" and (
+                    epoch > 0 or self.total_steps != -1
+                )
+
+                train_loss, self.total_steps = self._train_epoch(epoch, train_dataloader)
                 metrics["train_loss"].append(train_loss)
 
                 if self.config.val_path is not None:
@@ -86,7 +98,7 @@ class Trainer:
 
         return total_loss / max(1, num_batches)
 
-    def _train_epoch(self, dataloader: Dataloader) -> float:
+    def _train_epoch(self, epoch: int, dataloader: Dataloader) -> tuple[float, int]:
         epoch_loss = 0.0
         num_batches = 0
         ema_loss = None
@@ -98,7 +110,7 @@ class Trainer:
             desc="  ↳ Training  ",
         )
 
-        for batch, targets in p_bar:
+        for step, (batch, targets) in enumerate(p_bar):
             logits = self.model.forward(batch, targets)
             loss = self.loss.forward(logits, targets)
 
@@ -109,10 +121,13 @@ class Trainer:
             self.model.backward(delta_output)
             self.optimizer.step(self.model.params(), self.model.grads())
 
+            if self.do_step:
+                self._step_learning_rate(epoch, step)
+
             num_batches += 1
             epoch_loss += loss
 
-        return epoch_loss / max(1, num_batches)
+        return epoch_loss / max(1, num_batches), num_batches
 
     def _validate_epoch(self, val_dataloader: Dataloader) -> float:
         total_loss = 0.0
@@ -138,7 +153,7 @@ class Trainer:
         return total_loss / max(1, num_batches)
 
     def _check_early_stopping(self, val_loss: float) -> bool:
-        if self.patience <= 0:
+        if self.patience < 0:
             return False
 
         if val_loss < self.best_loss:
@@ -154,6 +169,25 @@ class Trainer:
             return True
 
         return False
+
+    def _step_learning_rate(self, current_epoch: int, step_in_epoch: int) -> None:
+        match self.config.lr_scheduling:
+            case "linear":
+                # Assuming self.total_steps is the steps per epoch
+                if self.total_steps <= 0:
+                    return
+
+                # Calculate progress out of total expected training steps
+                total_training_steps = self.total_steps * self.config.epochs
+                global_step = (current_epoch * self.total_steps) + step_in_epoch
+                progress = min(1.0, global_step / max(1, total_training_steps))
+                
+                new_lr = self.config.lr * (1 - progress)
+                self.optimizer.lr = max(self.config.min_lr, new_lr)
+            case _:
+                raise RuntimeError(
+                    f"Invalid learning rate scheduling specified: {self.config.lr_scheduling}"
+                )
 
     def _save_model(self, save_dir: str) -> None:
         params = {}

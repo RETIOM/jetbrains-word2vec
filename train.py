@@ -59,6 +59,23 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--min-lr",
+        type=float,
+        required=False,
+        default=5e-4,
+        help="Minimal learning rate if scheduling is used",
+    )
+
+    parser.add_argument(
+        "--lr-scheduling",
+        type=str,
+        required=False,
+        choices=["linear", "off"],
+        default="linear",
+        help="Scheduling type used for lr",
+    )
+
+    parser.add_argument(
         "--embedding-dim",
         type=int,
         required=False,
@@ -84,7 +101,7 @@ def parse_args():
         "--negative-samples",
         type=int,
         required=False,
-        default=5,
+        default=10,
         help="Number of negative samples for negative sampling",
     )
 
@@ -124,7 +141,7 @@ def parse_args():
         "--patience",
         type=int,
         required=False,
-        default=0,
+        default=-1,
         help="Num. epochs of no improvement before early stop. Note: Only available if --val-path is specified",
     )
 

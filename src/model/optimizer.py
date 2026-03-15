@@ -5,6 +5,8 @@ from typing import Any
 
 
 class Optimizer(ABC):
+    lr: float = 0.025
+
     @abstractmethod
     def step(self, params: list[Any], grads: list[Any]) -> None:
         pass

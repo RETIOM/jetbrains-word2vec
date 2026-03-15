@@ -95,16 +95,23 @@ python train.py \
     --train-path ./data/wikitext-103/wiki.train.tokens \
     --val-path ./data/wikitext-103/wiki.valid.tokens \
     --save-dir ./outputs/model \
-    --batch-size 64 \
+    --batch-size 128 \
     --epochs 10 \
     --lr 0.025 \
-    --embedding-dim 100 \
-    --window-size 2 \
+    --min-lr 0.0005 \
+    --lr-scheduling linear \
+    --embedding-dim 300 \
+    --window-size 5 \
+    --negative-samples 10 \
+    --subsampling-rate 0.00005 \
+    --optimizer SGD \
+    --patience 5 \
     --min-count 5 \
     --dynamic-window \
     --store-metrics \
     --plot
 ```
+_dataset load might take a while_(around 1min for me)
 
 **`demo.py`**: Demo of inference; Computes operations such as `king - man + woman` and finds similar words in the vocab
 - Example: 
