@@ -219,5 +219,4 @@ __marimo__/
 # data
 /data/*
 !/data/README.md
-/outputs/model/*.npz
 

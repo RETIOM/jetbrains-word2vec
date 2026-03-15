@@ -73,6 +73,13 @@ Also make sure you have data:
 python3 download_dataset.py
 ```
 
+NOTE:
+By default only the _small_ model(trained using "Quick test") is bundled with git, while the _large_ model(trained on the full corpra) requires:
+```bash
+git lfs install
+git lfs pull
+```
+
 **`train.py`**: Orchestrates the model training loop and saves weights. Run `python train.py -h` for more info.
 - Quick test: 
 ```bash
@@ -117,8 +124,8 @@ _dataset load might take a while_(around 1min for me)
 - Example: 
 ```bash
 python demo.py \
-    --model-path ./outputs/model/embedder.npz \
-    --tokenizer-path ./outputs/model/tokenizer.npz \
+    --model-path ./outputs/model/small/embedder.npz \
+    --tokenizer-path ./outputs/model/small/tokenizer.npz \
     --positive king woman \
     --negative man \
     --top-k 10
