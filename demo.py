@@ -17,6 +17,9 @@ def main():
     parser.add_argument("--positive", type=str, nargs="+", default=["king", "woman"])
     parser.add_argument("--negative", type=str, nargs="+", default=["man"])
     parser.add_argument("--top-k", type=int, default=10)
+    parser.add_argument(
+        "--include-inputs", action="store_true", help="Include input words in results"
+    )
     args = parser.parse_args()
 
     model = CBOWInference.from_file(
@@ -32,9 +35,20 @@ def main():
         print(e)
         return
 
-    target_vec = sum(pos_vecs) - sum(neg_vecs)
-
+    target_vec = np.sum(pos_vecs, axis=0) - np.sum(neg_vecs, axis=0)
     sims = cosine_similarity(target_vec, model.embeddings)
+
+    if not args.include_inputs:
+        input_words = args.positive + args.negative
+        for word in input_words:
+            try:
+                vec = model.embed(word)[0]
+                idx = np.where(np.all(model.embeddings == vec, axis=1))[0]
+                if len(idx) > 0:
+                    sims[idx[0]] = -np.inf
+            except:
+                pass
+
     top_indices = np.argsort(sims)[-args.top_k :][::-1]
 
     print("\n[Analogies]")
